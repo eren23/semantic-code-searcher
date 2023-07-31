@@ -8,6 +8,7 @@ from pathlib import Path
 from sentence_transformers import SentenceTransformer
 from transformers import AutoTokenizer, AutoModel
 import ast
+import re
 
 # Define the prefixes for code blocks
 CODE_BLOCK_PREFIXES = ['def ', 'class ', 'if ', 'for ', 'while ', 'try ', 'except ', 'with ', 'async def ']
@@ -26,16 +27,21 @@ else:
     # model = SentenceTransformer('sentence-transformers/all-mpnet-base-v2')
     # model = SentenceTransformer('sentence-transformers/all-distilroberta-v1')
 
+
 def get_block_name(code):
     """
     Extract block name from a line beginning with code block prefixes.
     """
     for prefix in CODE_BLOCK_PREFIXES:
         if code.startswith(prefix):
-            if prefix in ['def ', 'class ']:
-                return code[len(prefix): code.index('(')]
+            if prefix in ['def ', 'class ', 'async def ']:
+                match = re.search(r'[\w_]+', code[len(prefix):])
+                if match:
+                    return match.group()
             else:
-                return code[: code.index(':')]
+                match = re.search(r'.*:', code)
+                if match:
+                    return match.group()[:-1]  # Excluding the colon at the end
 
 def get_until_no_space(all_lines, i):
     """
@@ -155,8 +161,12 @@ target_username = input('Enter the username of the target user: ')
 
 df = extract_blocks_from_multiple_repos(username, target_username, token)
 
-# After extracting the code blocks, we can search for the blocks
-# search_blocks(df, "music parser")
+# Example usage
+# code_query = """
+# encoder module
+# """
+
+# search_blocks(df, code_query, n=5, pprint=True, n_lines=7)
 
 # Save the dataframe to a csv
 df.to_csv(f'{target_username}_embeddings.csv', index=False)
